@@ -35,18 +35,18 @@ git clone https://github.com/deeptextlab/BioPREP.git
 You can either fine-tune BERT-based pretrained models(BERT-base, BioBERT and SciBERT), or train neural network-based models(CNN, Multichannel CNN, LSTM, BiLSTM and CNN + LSTM). We simply used the extension of pretrained BERT models for our research.
 
 ```python
-python3 train.py --model_type='BioBERT' \ 
-		--label_type='Predicate' \
+python3 train.py --model_type=BioBERT \ 
+		--label_type=Predicate \
   		--seed=42 \
     		--epochs=20 \
       		--batch_size=16 \
-        	--test_size=0.2 \
-          	--max_len=512 \
-            	--lr=5e-5 \
-              	--eps=1e-8 \
-                --eval_interval=5 \
-                --output_dir_path='/models' \
-                --data_file_path='/BioPREP/train.csv'
+        		--test_size=0.2 \
+          		--max_len=512 \
+            		--lr=5e-5 \
+              		--eps=1e-8 \
+                		--eval_interval=5 \
+                  		--output_dir_path='/models' \
+                    		--data_file_path='/BioPREP/train.csv'
 ```
 
 Values for arguments above are default settings, so if you just run
@@ -72,12 +72,12 @@ Note that you can also manage when the fine-tuned weights would be saved by usin
 With unlabelled dataset, you can infer answers when running the codes below.
 
 ```python
-python3 test.py --model_type='BioBERT' \ 
-		--label_type='Predicate' \
+python3 test.py --model_type=BioBERT \ 
+		--label_type=Predicate \
       		--batch_size=16 \
           	--max_len=512 \
                 --output_dir_path='/models' \
-                --data_file_path='/BioPREP/train.csv'
+                  --data_file_path='/BioPREP/train.csv'
 ```
 
 If you want to use other settings, change the arguments.
