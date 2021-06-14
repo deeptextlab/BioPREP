@@ -142,8 +142,8 @@ dmypy.json
 .prof
 
 # Deprecated files
-./train_BERTs.py
-./train_NNs.py
+.train_BERTs.py
+.train_NNs.py
 
 # Others
 *.DS_Store
