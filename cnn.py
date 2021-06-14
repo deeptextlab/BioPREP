@@ -81,16 +81,8 @@ class WordVecCnn(object):
         idx2label = dict([(idx, label) for label, idx in self.labels.items()])
         return idx2label[np.argmax(predicted)]
 
-    def fit(self, text_data_model, text_label_pairs, model_dir_path, batch_size=None, epochs=None,
-            test_size=None, random_state=None):
-        if batch_size is None:
-            batch_size = 64
-        if epochs is None:
-            epochs = 20
-        if test_size is None:
-            test_size = 0.3
-        if random_state is None:
-            random_state = 42
+    def fit(self, text_data_model, text_label_pairs, model_dir_path, batch_size=64, epochs=20,
+            test_size=0.2, random_state=42):
 
         self.config = text_data_model
         self.idx2word = self.config['idx2word']
@@ -108,7 +100,6 @@ class WordVecCnn(object):
         xs = []
         ys = []
         for text, label in text_label_pairs:
-            # tokens = [x.lower() for x in word_tokenize(text)]
             tokens = [x for x in word_tokenize(text)]
             wid_list = list()
             for w in tokens:
@@ -148,13 +139,6 @@ class WordVecCnn(object):
         self.model.save_weights(weight_file_path)
 
         np.save(model_dir_path + '/' + WordVecCnn.model_name + '-history.npy', history.history)
-
-        # score = self.model.evaluate(x=x_test, y=y_test, batch_size=batch_size, verbose=1)
-        # print('score: ', score[0])
-        # print('accuracy: ', score[1])
-        # print('f1: ', score[2])
-        # print('precision: ', score[3])
-        # print('recall: ', score[4])
 
         return history
 
@@ -259,16 +243,7 @@ class WordVecMultiChannelCnn(object):
         return model
 
     def fit(self, text_data_model, text_label_pairs, model_dir_path,
-            test_size=None, random_state=None,
-            epochs=None, batch_size=None):
-        if epochs is None:
-            epochs = 20
-        if batch_size is None:
-            batch_size = 32
-        if test_size is None:
-            test_size = 0.3
-        if random_state is None:
-            random_state = 42
+            test_size=0.2, random_state=42, epochs=20, batch_size=64):
 
         self.config = text_data_model
         self.idx2word = self.config['idx2word']

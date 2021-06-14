@@ -5,7 +5,6 @@ from utility.plot_utils import plot_prcurve
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support
 import time
 import os
@@ -15,40 +14,47 @@ from transformers import AdamW
 from transformers import get_linear_schedule_with_warmup
 
 
-class BERT_for_classification():
-
+class BERT_for_classification(object):
     def __init__(self, model_name, num_labels):
         self.tokenizer = get_tokenizer(model_name)
         self.model_name = model_name
         self.model = get_model(model_name, num_labels)
 
-    def fit(self, batch_size=None, epochs=None, max_len=None,
-            optimizer=None, test_size=None, random_state=None):
-            if batch_size is None:
-                batch_size = 16
-            if epochs is None:
-                epochs = 20
-            if max_len is None:
-                max_len = 512
-            if optimizer is None:
-                optimizer = AdamW(self.model.parameters(), lr = 5e-5, eps = 1e-8)
-            
+        self.batch_size = None
+        self.epochs = None
+        self.max_len = None
+        self.optimizer = None
+        self.test_size = None
+        self.seed = None
+
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    def fit(self, train_data, test_data,
+            batch_size=16, epochs=20, max_len=512,
+            test_size=0.2, seed=42, lr=5e-5, eps=1e-8, eval_interval=5):
+
             self.batch_size = batch_size
             self.epochs = epochs
             self.max_len = max_len
-            self.optimizer = optimizer
+            self.optimizer = AdamW(self.model.parameters(), lr=lr, eps=eps)
+            self.test_size = test_size
+            self.seed = seed
+
+            self.model.to(self.device)
+
+            X_train, y_train = train_data
+            X_test, y_test = test_data
 
             # Total number of training steps is [number of batches] x [number of epochs]. 
-            batches = len(self.X_train)//self.batch_size + 1
+            batches = len(X_train) // self.batch_size + 1
             total_steps = batches * self.epochs
 
             # Create the learning rate scheduler.
-            self.scheduler = get_linear_schedule_with_warmup(optimizer, 
+            self.scheduler = get_linear_schedule_with_warmup(self.optimizer,
                                                         num_warmup_steps = 0,
                                                         num_training_steps = total_steps)
 
-            # We'll store a number of quantities such as training and validation loss, 
-            # validation accuracy, and timings.
+            # We'll store a number of quantities such as training and validation loss, validation accuracy, and timings.
             training_stats = []
 
             # Update every `update_interval` batches.
@@ -66,12 +72,13 @@ class BERT_for_classification():
 
             # For each epoch...
             for epoch_i in range(1, self.epochs+1):
-                self.model = self.train(update_interval, epoch_i, training_stats, train_loss)
-                self.eval(self.model, epoch_i, val_loss, best_score)
+                self.model = self.train(X_train, y_train, update_interval, epoch_i, training_stats, train_loss)
 
-            print("")
-            print("Training complete!")
+                # Evaluation for dev set
+                if epoch_i % eval_interval == 0:
+                    self.eval(X_test, y_test, epoch_i, val_loss, best_score)
 
+            print("\nTraining complete!")
             print("Total training took {:} (h:mm:ss)".format(format_time(time.time() - total_t0)))
 
             report = classification_report(self.true_labels, self.preds, output_dict=True)
@@ -82,10 +89,8 @@ class BERT_for_classification():
 
             print('Classification report was saved')
 
-            return
 
-
-    def train(self, update_interval, epoch_i, training_stats, train_loss):
+    def train(self, X, y, update_interval, epoch_i, training_stats, train_loss):
         # ========================================
         #               Training
         # ========================================
@@ -99,8 +104,8 @@ class BERT_for_classification():
         # Use our `make_smart_batches` function to re-shuffle the dataset into new batches.
         (py_inputs, py_attn_masks, py_labels) = make_smart_batches(tokenizer=self.tokenizer, 
                                                                 max_len=self.max_len, 
-                                                                text_samples=self.X_train, 
-                                                                labels=self.y_train, 
+                                                                text_samples=X,
+                                                                labels=y,
                                                                 batch_size=self.batch_size)
         
         print('Training on {:,} batches...'.format(len(py_inputs)))
@@ -108,10 +113,10 @@ class BERT_for_classification():
         # Measure how long the training epoch takes.
         t0 = time.time()
 
+        self.model.train()
+
         # Reset the total loss for this epoch.
         total_train_loss = 0
-
-        self.model.train()
 
         # For each batch of training data...
         for step in range(0, len(py_inputs)):
@@ -184,170 +189,140 @@ class BERT_for_classification():
         )
         return self.model
 
-    def eval(self, model, epoch_i, val_loss, best_score):
+    def eval(self, X, y, epoch_i, val_loss, best_score):
         # ========================================
         #               Evaluation
         # ========================================
 
-        if epoch_i % 5 == 0: # control denominator(1~5 recommended)
-            print('Predicting labels for {:,} test sentences...'.format(len(self.y_test)))
+        print('Predicting labels for {:,} test sentences...'.format(len(y)))
 
-            # Put model in evaluation mode
-            self.model.eval()
+        # Put model in evaluation mode
+        self.model.eval()
 
-            # Tracking variables 
-            predictions, true_labels = [], []
+        # Tracking variables
+        predictions, true_labels = [], []
 
-            # Smart Batch
-            (py_inputs, py_attn_masks, py_labels) = make_smart_batches(tokenizer=self.tokenizer, 
-                                                                max_len=self.max_len, 
-                                                                text_samples=self.X_train, 
-                                                                labels=self.y_train, 
-                                                                batch_size=self.batch_size)
+        # Smart Batch
+        (py_inputs, py_attn_masks, py_labels) = make_smart_batches(tokenizer=self.tokenizer,
+                                                            max_len=self.max_len,
+                                                            text_samples=X,
+                                                            labels=y,
+                                                            batch_size=self.batch_size)
 
-            # Choose an interval on which to print progress updates.
-            update_interval_eval = good_update_interval(total_iters=len(py_inputs), 
-                                                        num_desired_updates=10)
+        # Choose an interval on which to print progress updates.
+        update_interval_eval = good_update_interval(total_iters=len(py_inputs),
+                                                    num_desired_updates=10)
 
-            # Measure elapsed time.
-            t0 = time.time()
-            
-            # Reset the total loss for this epoch.
-            total_val_loss = 0
+        # Measure elapsed time.
+        t0 = time.time()
 
-            # For each batch of training data...
-            for step in range(0, len(py_inputs)):
+        # Reset the total loss for this epoch.
+        total_val_loss = 0
 
-                # Progress update every 100 batches.
-                if step % update_interval_eval == 0 and not step == 0:
-                    # Calculate elapsed time in minutes.
-                    elapsed = format_time(time.time() - t0)
+        # For each batch of training data...
+        for step in range(0, len(py_inputs)):
 
-                    # Calculate the time remaining based on our progress.
-                    steps_per_sec = (time.time() - t0) / step
-                    remaining_sec = steps_per_sec * (len(py_inputs) - step)
-                    remaining = format_time(remaining_sec)
+            # Progress update every 100 batches.
+            if step % update_interval_eval == 0 and not step == 0:
+                # Calculate elapsed time in minutes.
+                elapsed = format_time(time.time() - t0)
 
-                    # Report progress.
-                    print('  Batch {:>7,}  of  {:>7,}.    Elapsed: {:}.  Remaining: {:}'.format(step, len(py_inputs), elapsed, remaining))
+                # Calculate the time remaining based on our progress.
+                steps_per_sec = (time.time() - t0) / step
+                remaining_sec = steps_per_sec * (len(py_inputs) - step)
+                remaining = format_time(remaining_sec)
 
-                # Copy the batch to the GPU.
-                b_input_ids = py_inputs[step].to(self.device)
-                b_input_mask = py_attn_masks[step].to(self.device)
-                b_labels = py_labels[step].to(self.device)
+                # Report progress.
+                print('  Batch {:>7,}  of  {:>7,}.    Elapsed: {:}.  Remaining: {:}'.format(step, len(py_inputs), elapsed, remaining))
 
-                # Telling the model not to compute or store gradients, saving memory and speeding up prediction
-                with torch.no_grad():
-                    # Forward pass, calculate logit predictions
-                    loss, logits = self.model(b_input_ids, 
-                                            token_type_ids=None, 
-                                            attention_mask=b_input_mask,
-                                            labels = b_labels)
-                
-                total_val_loss += loss.item()
+            # Copy the batch to the GPU.
+            b_input_ids = py_inputs[step].to(self.device)
+            b_input_mask = py_attn_masks[step].to(self.device)
+            b_labels = py_labels[step].to(self.device)
 
-                # Move logits and labels to CPU
-                logits = logits.detach().cpu().numpy()
-                label_ids = b_labels.to('cpu').numpy()
+            # Telling the model not to compute or store gradients, saving memory and speeding up prediction
+            with torch.no_grad():
+                # Forward pass, calculate logit predictions
+                loss, logits = self.model(b_input_ids,
+                                        token_type_ids=None,
+                                        attention_mask=b_input_mask,
+                                        labels = b_labels)
 
-                # Store predictions and true labels
-                predictions.append(logits)
-                true_labels.append(label_ids)
-                
-            # Calculate the average val loss over all of the batches.
-            avg_val_loss = total_val_loss / len(py_inputs)
-            val_loss.append(avg_val_loss)
+            total_val_loss += loss.item()
 
-            # Combine the results across the batches.
-            predictions = np.concatenate(predictions, axis=0)
-            true_labels = np.concatenate(true_labels, axis=0)
-            self.true_labels = true_labels
-            self.predictions = predictions
+            # Move logits and labels to CPU
+            logits = logits.detach().cpu().numpy()
+            label_ids = b_labels.to('cpu').numpy()
 
-            # Choose the label with the highest score as our prediction.
-            preds = np.argmax(predictions, axis=1).flatten()
-            self.preds = preds
+            # Store predictions and true labels
+            predictions.append(logits)
+            true_labels.append(label_ids)
 
-            print(classification_report(true_labels, preds))
+        # Calculate the average val loss over all of the batches.
+        avg_val_loss = total_val_loss / len(py_inputs)
+        val_loss.append(avg_val_loss)
 
-            acc = accuracy_score(true_labels, preds)
-            precision, recall, f1, _ = precision_recall_fscore_support(true_labels, preds, average='weighted')
-            print('accuracy', acc)
-            print('f1(weighted)',  f1)
-            print('precision', precision)
-            print('recall', recall)
-            print("")
-            print("Average validation loss: {0:.2f}".format(avg_val_loss))
-            
-            if not os.path.exists('./models_BERT'):
-                os.mkdir('./models_BERT')
+        # Combine the results across the batches.
+        predictions = np.concatenate(predictions, axis=0)
+        true_labels = np.concatenate(true_labels, axis=0)
+        self.true_labels = true_labels
+        self.predictions = predictions
 
-            if f1 > best_score:
-                best_score = f1
+        # Choose the label with the highest score as our prediction.
+        preds = np.argmax(predictions, axis=1).flatten()
+        self.preds = preds
 
-                model_dir = './models_BERT'
-                state = {
-                'model': self.model.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'scheduler': self.scheduler.state_dict()
-                }
+        print(classification_report(true_labels, preds))
 
-                now = time.strftime('%m%d_%H:%M')
-                torch.save(state, os.path.join(model_dir, '_'.join([self.model_name, now, str(epoch_i), str(round(f1, 4))]) + '.pth'))
-                
-                print('model saved')
-                ## each .pth file occupies over 1GB
-                ## delete .pth files in folder which are not to be used, for memory problem
-        
-        return
+        acc = accuracy_score(true_labels, preds)
+        precision, recall, f1, _ = precision_recall_fscore_support(true_labels, preds, average='weighted')
+        print('accuracy', acc)
+        print('f1(weighted)',  f1)
+        print('precision', precision)
+        print('recall', recall)
+        print("")
+        print("Average validation loss: {0:.2f}".format(avg_val_loss))
 
-    def set_base(self, X, y, test_size=None, random_state=None):
-        # Setting base variables
-        if test_size is None:
-            test_size=0.2
-        if random_state is None:
-            random_state=42
+        if not os.path.exists('./models_BERT'):
+            os.mkdir('./models_BERT')
 
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, 
-                                                                    test_size=test_size, 
-                                                                    random_state=random_state, 
-                                                                    stratify=y)
-            
-        print('===========================================')
-        print('Below is the shape of train/test dataset.')
-        print('===========================================')
-        print(self.X_train.shape, self.X_test.shape, self.y_train.shape, self.y_test.shape)
-        print('===========================================')
+        if f1 > best_score:
+            best_score = f1
 
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-            desc = self.model.to(self.device)
-        else:
-            self.device = torch.device('cpu')
-            desc = self.model.to(self.device)
-        return 
+            model_dir = './models_BERT'
+            state = {
+            'model': self.model.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'scheduler': self.scheduler.state_dict()
+            }
+
+            now = time.strftime('%m_%d_%H_%M')
+            torch.save(state, os.path.join(model_dir, '_'.join([self.model_name, now, 'EPOCH', str(epoch_i), \
+                                                                'F1', str(round(f1, 4))]) + '.pth'))
+
+            print('model saved')
+            ## each .pth file occupies over 1GB
+            ## delete .pth files in folder which are not to be used, for memory problem
 
 
     def plot(self):
         return plot_prcurve(self.model_name, self.true_labels, self.predictions)
 
 
-    def pred(self, model_file_name, model_type, batch_size=None, max_len=None):
-        # Load best model
-        best_model = load_model(self.model, model_file_name)
+    def pred(self, X, model_file_name, model_type, batch_size=16, max_len=512):
 
-        if batch_size is None:
-            batch_size = 16
-        if max_len is None:
-            max_len = 512
+        # Load model
+        model = load_model(self.model, model_file_name)
+        model.to(self.device)
 
         # Create test set batch
         (py_inputs, py_attn_masks, py_labels) = make_smart_batches(tokenizer=self.tokenizer,
                                                                 max_len=max_len, 
-                                                                text_samples=self.X_test,  
+                                                                text_samples=X,
                                                                 batch_size=batch_size)
         
-        print('Predicting labels for {:,} test sentences...'.format(len(self.X_test)))
+        print('Predicting labels for {:,} test sentences...'.format(len(X)))
+
         # Tracking variables 
         predictions = []
 
@@ -358,7 +333,7 @@ class BERT_for_classification():
         t0 = time.time()
 
         # Put model in prediction mode
-        best_model.eval()
+        model.eval()
 
         # For each batch of training data...
         for step in range(0, len(py_inputs)):
@@ -383,9 +358,9 @@ class BERT_for_classification():
             # Telling the model not to compute or store gradients, saving memory and speeding up prediction
             with torch.no_grad():
                 # Forward pass, calculate logit predictions
-                outputs = best_model(b_input_ids, 
-                                    token_type_ids=None, 
-                                    attention_mask=b_input_mask)
+                outputs = model(b_input_ids,
+                                token_type_ids=None,
+                                attention_mask=b_input_mask)
 
             logits = outputs[0]
 
@@ -394,6 +369,7 @@ class BERT_for_classification():
         
             # Store predictions and true labels
             predictions.append(logits)
+
         print('    DONE.')
 
         # Combine the results across the batches.
@@ -401,8 +377,7 @@ class BERT_for_classification():
 
         # Choose the label with the highest score as our prediction.
         preds = np.argmax(predictions, axis=1).flatten()
-
-        df_preds = pd.DataFrame({'text': self.X_test, 'label': self.y_test, 'prediction': preds})
+        df_preds = pd.DataFrame({'text': X, 'prediction': preds})
         
         # Record used model and date
         if not os.path.exists('./prediction'):

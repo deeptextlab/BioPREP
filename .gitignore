@@ -141,6 +141,10 @@ dmypy.json
 # profiling data
 .prof
 
+# Deprecated files
+train_BERTs.py
+train_NNs.py
+
 # Others
 *.DS_Store
 .idea/

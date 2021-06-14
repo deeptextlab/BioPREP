@@ -2,6 +2,8 @@ import numpy as np
 import sys
 import os
 
+from utility.simple_data_loader import load_text_label_pairs, load_csv_dataset
+from utility.text_fit import fit_text
 
 def main(NN_type:str, label_type:str): # label_type -> 'Predicate' or 'FrameNet'
     random_state = 42
@@ -13,9 +15,6 @@ def main(NN_type:str, label_type:str): # label_type -> 'Predicate' or 'FrameNet'
 
     output_dir_path = current_dir + '/models'
     data_file_path = current_dir + '/BioPREP/train.csv'
-
-    from utility.simple_data_loader import load_text_label_pairs, load_csv_dataset
-    from utility.text_fit import fit_text
 
     text_data_model = fit_text(data_file_path, label_type=label_type)
     text_label_pairs = load_csv_dataset(data_file_path, label_type=label_type)

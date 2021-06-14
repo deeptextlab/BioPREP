@@ -1,5 +1,6 @@
 ## Library
 # base
+import argparse
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
 os.environ["CUDA_VISIBLE_DEVICES"]="0, 1"
@@ -10,7 +11,6 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # data manipulation
-import pandas as pd
 import numpy as np
 
 # tools
