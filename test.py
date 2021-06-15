@@ -16,7 +16,7 @@ import torch
 
 # user-made
 from berts import BERT_for_classification
-from utility.simple_data_loader import load_bert_data
+from utility.simple_data_loader import load_bert_data, download_file_from_google_drive
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
@@ -41,11 +41,11 @@ def define_argparser():
     parser.add_argument('--max-len', type=float, default=512,
                         help='default 512. Set maximum token length for input')
 
-    parser.add_argument('--model-dir-path', type=str, default='/models',
+    parser.add_argument('--model-dir-path', type=str, default='./models',
                         help='default directory was set to models folder. \
-                        Write down another path if you want to save model in different directory')
+                        Write down another path if you want to load model in different directory')
 
-    parser.add_argument('--data_file_path', type=str, default='/BioPREP/train.csv',
+    parser.add_argument('--data_file_path', type=str, default='./BioPREP/train.csv',
                         help='default data directory was set to train file in BioPREP folder. \
                         Write down another path if you want to load your own data')
 
@@ -80,21 +80,32 @@ def main(config):
     print('===========================================')
 
     if config.label_type == 'Predicate':
-        if config.model_dir_path == None:
+        if config.model_dir_path == './models':
             # Sample fine-tuned model based on BioBERT. Download .pth file using Google Drive
-            model_file_name = 'biobert_0304_16:21_10_0.9973.pth'
+            file_id = '1MVD1irqedK0K7DERBt3gtQqT3snUWWFf'
+            model_file_name = config.model_dir_path + '/BioBERT_0107_09_20_20_0.8462.pth'
+            
+            print('Downloading model..')
+            print('===========================================')
+            download_file_from_google_drive(file_id, model_file_name)
         else:
-            model_file_name = config.model_dir_path
+            model_file_name = config.model_dir_path + 'yourmodelname.pth'
     else:
-        if config.model_dir_path == None:
-            model_file_name = 'biobert_0304_16:21_10_0.9973.pth'
+        if config.model_dir_path == './models':
+            file_id = '1xOzYCWDsFr789EaLIWiOfD5S_K2YTw7q'
+            model_file_name = config.model_dir_path + '/BioBERT_FNet_0106_09_03_20_0.8783.pth'
+
+            print('Downloading model..')
+            print('===========================================')
+            download_file_from_google_drive(file_id, model_file_name)
         else:
-            model_file_name = config.model_dir_path
+            model_file_name = config.model_dir_path + 'yourmodelname.pth'
+    print('===== Download finished')
 
     # Infer unlabelled dataset using loaded fine-tuned model.
     # Results would be saved in prediction folder.
     model = BERT_for_classification(model_type, num_labels)
-    model.pred(model_file_name, model_type)
+    model.pred(X_test, model_file_name, model_type)
 
 
 if __name__ == '__main__':

@@ -32,6 +32,6 @@ def get_model(model_name, num_classes):
 
 def load_model(model, model_file_name):
     # Used for prediction
-    state = torch.load(os.path.join('./models_BERT/' + model_file_name), map_location='cpu')
-    model.load_state_dict(state['model'])
+    state = torch.load(os.path.join(model_file_name), map_location='cpu')
+    model.load_state_dict(state['model'], strict=False)
     return model
