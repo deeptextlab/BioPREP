@@ -148,6 +148,5 @@ dmypy.json
 # Others
 *.DS_Store
 .idea/
-model*/
 
 # End of https://www.toptal.com/developers/gitignore/api/python

@@ -85,6 +85,9 @@ def main(config):
             file_id = '1MVD1irqedK0K7DERBt3gtQqT3snUWWFf'
             model_file_name = config.model_dir_path + '/BioBERT_0107_09_20_20_0.8462.pth'
             
+            if not os.path.exists('./models'):
+                os.mkdir('./models')
+
             print('Downloading model..')
             print('===========================================')
             download_file_from_google_drive(file_id, model_file_name)
@@ -94,6 +97,9 @@ def main(config):
         if config.model_dir_path == './models':
             file_id = '1xOzYCWDsFr789EaLIWiOfD5S_K2YTw7q'
             model_file_name = config.model_dir_path + '/BioBERT_FNet_0106_09_03_20_0.8783.pth'
+
+            if not os.path.exists('./models'):
+                os.mkdir('./models')
 
             print('Downloading model..')
             print('===========================================')
