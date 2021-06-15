@@ -66,16 +66,8 @@ class WordVecCnnLstm(object):
 
         self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=[self.get_f1]) # default 1e-4
 
-    def fit(self, text_data_model, text_label_pairs, model_dir_path, batch_size=None, epochs=None,
-            test_size=None, random_state=None):
-        if batch_size is None:
-            batch_size = 64
-        if epochs is None:
-            epochs = 20
-        if test_size is None:
-            test_size = 0.3
-        if random_state is None:
-            random_state = 42
+    def fit(self, text_data_model, text_label_pairs, model_dir_path, batch_size=64, epochs=20,
+            test_size=0.2, random_state=42):
 
         self.config = text_data_model
         self.idx2word = self.config['idx2word']
@@ -93,7 +85,6 @@ class WordVecCnnLstm(object):
         xs = []
         ys = []
         for text, label in text_label_pairs:
-            # tokens = [x.lower() for x in word_tokenize(text)]
             tokens = [x for x in word_tokenize(text)]
             wid_list = list()
             for w in tokens:
@@ -156,7 +147,6 @@ class WordVecCnnLstm(object):
 
     def predict(self, sentence):
         xs = []
-        # tokens = [w.lower() for w in word_tokenize(sentence)]
         tokens = [w for w in word_tokenize(sentence)]
         wid = [self.word2idx[token] if token in self.word2idx else len(self.word2idx) for token in tokens]
         xs.append(wid)

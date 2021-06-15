@@ -14,8 +14,7 @@ def get_tokenizer(model_name):
     elif model_name == 'biobert':
         tokenizer = AutoTokenizer.from_pretrained("dmis-lab/biobert-base-cased-v1.1", do_lower_case=False)
     else:
-        raise Exception('Tokenizer should be one of the following; bert-base / scibert / biobert')
-    
+        raise Exception('Tokenizer should be one of the following; BERT_base / SciBERT / BioBERT')
     return tokenizer
 
 def get_model(model_name, num_classes):
@@ -28,12 +27,11 @@ def get_model(model_name, num_classes):
     elif model_name == 'biobert':
         model = MySequenceClassification.from_pretrained("dmis-lab/biobert-base-cased-v1.1", num_labels=num_classes)
     else:
-        raise Exception('BERT model should be one of the following; bert-base / scibert / biobert')
-
+        raise Exception('BERT model should be one of the following; BERT_base / SciBERT / BioBERT')
     return model
 
 def load_model(model, model_file_name):
     # Used for prediction
-    state = torch.load(os.path.join('./models_BERT/'+model_file_name), map_location='cpu')
+    state = torch.load(os.path.join('./models_BERT/' + model_file_name), map_location='cpu')
     model.load_state_dict(state['model'])
     return model
