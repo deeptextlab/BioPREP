@@ -2,9 +2,9 @@
 
 <img width="720" alt="Overview" src="https://user-images.githubusercontent.com/63843498/121888927-89094d80-cd53-11eb-9364-707008ffcaac.png">
 
-This repository contains **Dataset(BioPREP: Biomedical Predicate Relation Extraction with entity-filtering by PKDE4J)** and code implementation for fine-tuning pretrained model, as well as inferencing unlabeled dataset using fine-tuned model.
+This repository contains **Dataset (BioPREP: Biomedical Predicate Relation Extraction with entity-filtering by PKDE4J)** and code implementation for fine-tuning pretrained model, as well as inferencing unlabeled dataset using fine-tuned model.
 
-Our open dataset, BioPREP, is based on SemMedDB(https://skr3.nlm.nih.gov/SemMed/index.html). We have extracted entities of sentences in SemMedDB using PKDE4J(link: http://informatics.yonsei.ac.kr/pkde4j/#), then replaced them with Entity Type. After preprocessing the dataset, we comprehensively evaluated performance of several architectures based on neural networks. Following the result of experiments, we found that BioBERT-based model outperformed other models for predicate classification.
+Our open dataset, BioPREP, is based on SemMedDB (https://skr3.nlm.nih.gov/SemMed/index.html). We have extracted entities of sentences in SemMedDB using PKDE4J (link: http://informatics.yonsei.ac.kr/pkde4j/#), then replaced them with Entity Type. After preprocessing the dataset, we comprehensively evaluated performance of several architectures based on neural networks. Following the result of experiments, we found that BioBERT-based model outperformed other models for predicate classification.
 
 For users who want to use BioBERT-based fine-tuned model, not going through the training process of pre-trained model, we uploaded fine-tuned model at Google Drive link. By executing *test.py*, you can just infer the predicate/frame type of unlabelled datasets.
 
@@ -87,9 +87,15 @@ If you want to use other settings, change the arguments.
 If you want to use our dataset BioPREP, please cite as below.
 
 ```
-@article{now under revision,
+@article{10.1016/j.jbi.2021.103888,
+	author={Gibong Hong, Yuheun Kim, Yeonjung Choi, Min Song},
+	(in press),
 	title={{BioPREP}: Deep Learning-based Predicate Classification with SemMedDB},
-	author={Gibong Hong, Yuheun Kim, Yeonjung Choi and Min Song}
+	journal={Journal of Biomedical Informatics},
+	year={2021},
+	month={08},
+	doi={10.1016/j.jbi.2021.103888},
+	url={https://doi.org/10.1016/j.jbi.2021.103888}
 	}
 ```
 
